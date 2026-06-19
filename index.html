@@ -403,6 +403,15 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
   vertical-align: middle;
   title: 'Valor cargado automáticamente';
 }
+.card input[type=number]:disabled,
+.card select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f5f0fe;
+  color: var(--muted);
+  border-color: #e8dff5;
+}
+
 .card.autofilled { border-color: rgba(246,255,114,0.35); }
 .card.autofilled .card-accent { background: var(--yellow) !important; }
 .card.autofilled select:disabled,
@@ -673,7 +682,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <select id="val-forestal" onchange="calc()">
         <option value="">— Seleccionar —</option>
         <option value="1">Exonerado</option>
-        <option value="0.9">CORPOCESAR / CORTOLINA / CORPAMAG / CARDIQUE / CAR / CARDER</option>
+        <option value="0.9">CORPOCESAR / CORTOLIMA / CORPAMAG / CARDIQUE / CAR / CARDER</option>
         <option value="0.8">CORPOBOYACÁ</option>
         <option value="0.6">CAS / CSB / CVS / CAM</option>
         <option value="0.1">Otras corporaciones</option>
@@ -697,8 +706,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <select id="val-coexistencias" onchange="calc()">
         <option value="">— Seleccionar —</option>
         <option value="1">No tiene</option>
-        <option value="0.6">Tiene + buena empresa</option>
-        <option value="0">Tiene + mala empresa</option>
+        <option value="0">Tiene</option>
       </select>
       <div class="score-bar-wrap">
         <div class="score-bar-header">
@@ -853,6 +861,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
         <option value="">— Seleccionar —</option>
         <option value="1">34.5 kV</option>
         <option value="0.7">13.8 kV</option>
+        <option value="0.7">13.2 kV</option>
         <option value="0">Sin red (0 kV)</option>
       </select>
       <div class="score-bar-wrap">
@@ -868,14 +877,13 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
     <div class="card" id="card-demanda">
       <div class="card-accent"></div>
       <div class="card-top">
-        <div class="card-name">Demanda del circuito / subestación</div>
+        <div class="card-name">Capacidad SE</div>
         <div class="card-weight">3.01%</div>
       </div>
-      <input type="number" id="val-demanda" placeholder="MW disponibles (0-12)" min="0" max="12" step="0.1" oninput="calc()">
-      <div id="demanda-pending" style="display:none;margin-top:6px;font-size:11px;color:var(--purple-soft);background:rgba(145,91,216,0.12);border:1px solid rgba(145,91,216,0.3);border-radius:6px;padding:4px 8px;">⏳ Pendiente por validar</div>
+      <input type="number" id="val-demanda" placeholder="Minigranjas (0-5)" min="0" max="5" step="1" oninput="calc()">
       <div class="score-bar-wrap">
         <div class="score-bar-header">
-          <span class="score-bar-label">Score <span style="color:var(--muted);font-size:10px">(0→0.0, 12→1.0)</span></span>
+          <span class="score-bar-label">Score <span style="color:var(--muted);font-size:10px">(0→0.0, 5→1.0)</span></span>
           <span class="score-val" id="sv-demanda">—</span>
         </div>
         <div class="bar-bg"><div class="bar-fill" id="bar-demanda"></div></div>
@@ -1010,9 +1018,20 @@ const ZONAS = {
 
 let currentZona = null; // { nombre, max } | null
 
+// Campos que el usuario puede llenar manualmente — todos los demás son solo-BD
+const MANUAL_FIELDS = new Set(['amenazas', 'propietario']);
+
 // IDs que se autocompletan desde la BD
 const AUTOFILLED_IDS = new Set();
 let fetchTimer = null;
+
+function initFieldStates() {
+  CRITERIA.forEach(c => {
+    if (MANUAL_FIELDS.has(c.id)) return;
+    const el = document.getElementById('val-' + c.id);
+    if (el) el.disabled = true;
+  });
+}
 
 function onCodigoChange() {
   const codigo = (document.getElementById('codigo-terreno').value || '').toUpperCase().trim();
@@ -1089,6 +1108,7 @@ async function fetchFromDB(codigo) {
       data.adecuacion            != null ? '🏔 Adecuación'    : '',
       data.inundacion            != null ? '🌊 Inundación'    : '',
       data.cauce                 != null ? '🌿 Cauce'         : '',
+      data.cobertura             != null ? '🌱 Cobertura'     : '',
     ].filter(Boolean);
     setDbStatus('ok', filled.length ? `✓ Cargado: ${filled.join(' · ')}` : `✓ Terreno encontrado — sin datos en BD`);
 
@@ -1123,10 +1143,17 @@ function applyAutofill(data) {
 
   const PENDING_BADGE_STYLE = 'margin-top:6px;font-size:11px;color:var(--purple-soft);background:rgba(145,91,216,0.12);border:1px solid rgba(145,91,216,0.3);border-radius:6px;padding:4px 8px;';
 
-  const fillSelect = (id, score) => {
+  const fillSelect = (id, score, label) => {
     const sel = document.getElementById('val-' + id);
     if (!sel || score == null) return;
-    sel.value = score;
+    if (label) {
+      const opts = Array.from(sel.options);
+      const idx = opts.findIndex(o => o.text.trim() === label.trim());
+      if (idx !== -1) sel.selectedIndex = idx;
+      else sel.value = score;
+    } else {
+      sel.value = score;
+    }
     sel.disabled = true;
     AUTOFILLED_IDS.add(id);
     const card = document.getElementById('card-' + id);
@@ -1150,7 +1177,7 @@ function applyAutofill(data) {
   const applySelect = (id, fieldData) => {
     if (!fieldData) return;
     if (fieldData.pending) setPendingSelect(id);
-    else fillSelect(id, fieldData.score);
+    else fillSelect(id, fieldData.score, fieldData.label);
   };
 
   const setInfoSelect = (id, message) => {
@@ -1168,30 +1195,19 @@ function applyAutofill(data) {
   applySelect('or',       data.operador);
   applySelect('offtaker', data.offtaker);
   applySelect('tension',  data.tension);
-  if (data.coexistencias) {
-    if (data.coexistencias.has) setInfoSelect('coexistencias', '⚠️ Tiene coexistencias — selecciona buena/mala empresa');
-    else fillSelect('coexistencias', data.coexistencias.score);
-  }
+  applySelect('coexistencias', data.coexistencias);
   applySelect('adecuacion',   data.adecuacion);
   applySelect('inundacion',   data.inundacion);
   applySelect('cauce',        data.cauce);
   applySelect('servidumbre',  data.servidumbre);
   applySelect('estructura',   data.estructura);
   applySelect('forestal',     data.forestal);
+  applySelect('solicitud',    data.cobertura);
+  applySelect('cluster',      data.cluster);
 
-  // Demanda del circuito
-  const pendingEl = document.getElementById('demanda-pending');
-  if (data.demanda) {
-    if (data.demanda.value != null) {
-      fill('demanda', data.demanda.value);
-      if (pendingEl) pendingEl.style.display = 'none';
-    } else if (data.demanda.pending) {
-      if (pendingEl) pendingEl.style.display = 'block';
-      const demandaInput = document.getElementById('val-demanda');
-      if (demandaInput) demandaInput.disabled = true;
-    }
-  } else {
-    if (pendingEl) pendingEl.style.display = 'none';
+  // Capacidad SE
+  if (data.demanda && data.demanda.value != null) {
+    fill('demanda', data.demanda.value);
   }
 
   calc();
@@ -1200,7 +1216,11 @@ function applyAutofill(data) {
 function clearAutofill() {
   AUTOFILLED_IDS.forEach(id => {
     const el = document.getElementById('val-' + id);
-    if (el) { el.disabled = false; el.value = ''; }
+    if (el) {
+      el.value = '';
+      if (MANUAL_FIELDS.has(id)) el.disabled = false;
+      // campos no-manuales permanecen disabled
+    }
     const card = document.getElementById('card-' + id);
     if (card) card.classList.remove('autofilled');
   });
@@ -1208,8 +1228,6 @@ function clearAutofill() {
   document.querySelectorAll('.pending-badge').forEach(el => el.remove());
   const pendingEl = document.getElementById('demanda-pending');
   if (pendingEl) pendingEl.style.display = 'none';
-  const demandaInput = document.getElementById('val-demanda');
-  if (demandaInput) demandaInput.disabled = false;
   setDbStatus('idle', '');
 }
 
@@ -1297,13 +1315,13 @@ const CRITERIA = [
     type: 'select', unit: ''
   },
   {
-    id: 'solicitud', name: 'Área bajo solicitud comunidad / línea negra', weight: 0.0401,
+    id: 'solicitud', name: 'Cambio en la cobertura vegetal', weight: 0.0401,
     type: 'select', unit: ''
   },
   {
-    id: 'demanda', name: 'Demanda del circuito / subestación (MW)', weight: 0.0301,
-    type: 'linear', min: 0, minScore: 0, max: 12, maxScore: 1,
-    unit: 'MW'
+    id: 'demanda', name: 'Capacidad SE', weight: 0.0301,
+    type: 'linear', min: 0, minScore: 0, max: 5, maxScore: 1,
+    unit: 'Mgs'
   },
   {
     id: 'tension', name: 'Tensión de la red', weight: 0.0172,
@@ -1518,6 +1536,7 @@ function calc() {
 }
 
 // Init table on load
+initFieldStates();
 calc();
 
 // ─────────────────────────────────────────────
@@ -1527,11 +1546,10 @@ function limpiarFormulario() {
   document.getElementById('codigo-terreno').value = '';
   currentZona = null;
   updateZonaBanner('');
-  CRITERIA.forEach(c => {
-    const el = document.getElementById('val-' + c.id);
-    if (!el) return;
-    if (el.tagName === 'SELECT') el.value = '';
-    else el.value = '';
+  clearAutofill();
+  MANUAL_FIELDS.forEach(id => {
+    const el = document.getElementById('val-' + id);
+    if (el) el.value = '';
   });
   calc();
 }

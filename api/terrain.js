@@ -1,4 +1,5 @@
 const { Client } = require('pg');
+const https   = require('https');
 
 const OR_MAP = {
   afinia:         { score: '1',   label: 'Afinia / ESSA / EPM' },
@@ -66,6 +67,13 @@ const SERVIDUMBRE_MAP = {
   'Pública y ajena':'0',
 };
 
+const EASEMENT_TYPE_MAP = {
+  'own':                { score: '1',   label: 'Propia' },
+  'public':             { score: '0.5', label: 'Pública' },
+  'foreign':            { score: '0.2', label: 'Ajena' },
+  'public_and_foreign': { score: '0',   label: 'Pública y ajena' },
+};
+
 const CAR_MAP = {
   // Score 0.9
   'CORPOCESAR':  '0.9', 'CORTOLIMA': '0.9', 'CORPAMAG':  '0.9',
@@ -82,6 +90,14 @@ const ESTRUCTURA_MAP = {
   'Mesa fija':  '0',
 };
 
+const COBERTURA_MAP = {
+  'Alto':       '1',
+  'Medio/Alto': '0.75',
+  'Medio':      '0.5',
+  'Medio/Bajo': '0.25',
+  'Bajo':       '0',
+};
+
 function mapTension(raw) {
   if (!raw) return null;
   const kv = parseFloat(raw);
@@ -89,6 +105,49 @@ function mapTension(raw) {
   if (kv >= 34) return { score: '1',   label: `${raw} kV` };
   if (kv >= 10) return { score: '0.7', label: `${raw} kV` };
   return null;
+}
+
+// ── Google Sheets — Capacidad SE ──
+const SHEETS_URL = 'https://docs.google.com/spreadsheets/d/1y2jClssIZNVAxpMsEJOL88AdG3tEAUrB025oSV4cwsc/export?format=csv&gid=1633164906';
+let _sheetsCache = null;
+let _sheetsCacheAt = 0;
+
+function httpsGet(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { rejectUnauthorized: false }, res => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return httpsGet(res.headers.location).then(resolve).catch(reject);
+      }
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).map(line => {
+    const vals = [];
+    let cur = '', inQ = false;
+    for (const ch of line) {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    vals.push(cur.trim());
+    return Object.fromEntries(headers.map((h, i) => [h, (vals[i] || '').trim()]));
+  });
+}
+
+async function fetchCapacidadSheet() {
+  if (_sheetsCache && (Date.now() - _sheetsCacheAt) < 5 * 60 * 1000) return _sheetsCache;
+  const text = await httpsGet(SHEETS_URL);
+  _sheetsCache = parseCSV(text);
+  _sheetsCacheAt = Date.now();
+  return _sheetsCache;
 }
 
 function makeClient(dbName) {
@@ -117,6 +176,7 @@ module.exports = async (req, res) => {
   try {
     await main.connect();
 
+
     const { rows } = await main.query(`
       SELECT
         t.id               AS terrain_id,
@@ -141,7 +201,7 @@ module.exports = async (req, res) => {
     const orKey = (row.operador_raw || '').toLowerCase().trim();
 
     // Campos civiles desde validation_field
-    let adecuacion = null, inundacion = null, cauce = null, servidumbre = null, estructura = null, forestal = null, demanda = null;
+    let adecuacion = null, inundacion = null, cauce = null, servidumbre = null, estructura = null, forestal = null, demanda = null, cobertura = null, coexistencias = null;
     if (row.terrain_id) {
       const { rows: civiles } = await main.query(`
         SELECT DISTINCT ON (name) name, value, status
@@ -151,26 +211,29 @@ module.exports = async (req, res) => {
           OR terrain_id = $1
         )
           AND name IN ('Adecuación del terreno', 'Riesgo de inundación', 'Ocupación de cauce',
-                       'Servidumbre', 'Tipo de arreglo', 'Número de árboles', 'CAR')
+                       'Servidumbre', 'Tipo de arreglo', 'Licencia de aprovechamiento forestal', 'CAR',
+                       'Cambio en la cobertura vegetal', 'ANH', 'ANM')
           AND (
             (value IS NOT NULL AND value != 'Pendiente')
             OR (name = 'Ocupación de cauce' AND status = 'exonerated')
+            OR (name = 'Licencia de aprovechamiento forestal' AND status = 'exonerated')
           )
-        ORDER BY name,
-          CASE status WHEN 'approved' THEN 1 WHEN 'exonerated' THEN 1 WHEN 'preapproved' THEN 2 ELSE 3 END,
-          id DESC
+        ORDER BY name, id DESC
       `, [row.terrain_id]);
 
       const fieldMap = Object.fromEntries(civiles.map(c => {
         if (c.name === 'Ocupación de cauce' && c.value == null && c.status === 'exonerated')
           return [c.name, 'No Requiere'];
+        if (c.name === 'Licencia de aprovechamiento forestal' && c.value == null && c.status === 'exonerated')
+          return [c.name, 'Exonerado'];
         return [c.name, c.value];
       }));
 
       // Detectar campos con registros en BD pero sin valor válido → pending
       const CIVIL_FIELD_NAMES = [
         'Adecuación del terreno', 'Riesgo de inundación', 'Ocupación de cauce',
-        'Servidumbre', 'Tipo de arreglo', 'Número de árboles',
+        'Servidumbre', 'Tipo de arreglo', 'Licencia de aprovechamiento forestal', 'Cambio en la cobertura vegetal',
+        'ANH', 'ANM',
       ];
       const missingFields = CIVIL_FIELD_NAMES.filter(f => fieldMap[f] == null);
       const pendingFields = new Set();
@@ -203,29 +266,62 @@ module.exports = async (req, res) => {
       else if (pendingFields.has('Servidumbre'))
         servidumbre = { pending: true };
 
+      // Si no se resolvió desde validation_field, buscar en easements_easement
+      if (!servidumbre) {
+        const { rows: easeRows } = await main.query(`
+          SELECT type FROM easements_easement
+          WHERE terrain_id = $1 AND character = 'electrical'
+          ORDER BY id DESC LIMIT 1
+        `, [row.terrain_id]);
+        if (easeRows.length > 0) {
+          const mapped = EASEMENT_TYPE_MAP[easeRows[0].type];
+          if (mapped) servidumbre = mapped;
+        }
+      }
+
+      // Si cualquier proyecto del terreno tiene tracker (1P/2P), ese valor tiene prioridad sobre Mesa fija
+      if (fieldMap['Tipo de arreglo'] !== '1P' && fieldMap['Tipo de arreglo'] !== '2P') {
+        const { rows: trackerRows } = await main.query(`
+          SELECT value FROM validation_field
+          WHERE (project_id IN (SELECT id FROM minifarm_project WHERE terrain_id = $1) OR terrain_id = $1)
+            AND name = 'Tipo de arreglo'
+            AND value IN ('1P', '2P')
+            AND value IS NOT NULL
+          ORDER BY id DESC LIMIT 1
+        `, [row.terrain_id]);
+        if (trackerRows.length > 0) fieldMap['Tipo de arreglo'] = trackerRows[0].value;
+      }
+
       if (fieldMap['Tipo de arreglo'] && ESTRUCTURA_MAP[fieldMap['Tipo de arreglo']] != null)
         estructura = { score: ESTRUCTURA_MAP[fieldMap['Tipo de arreglo']], label: fieldMap['Tipo de arreglo'] };
       else if (pendingFields.has('Tipo de arreglo'))
         estructura = { pending: true };
 
-      // Forestal: 0 árboles → Exonerado (1), con árboles → score según CAR
-      // Capacidad de red (demanda) — puede tener valor o estar pendiente
-      const { rows: demandaRows } = await main.query(`
-        SELECT value FROM validation_field
-        WHERE (project_id IN (SELECT id FROM minifarm_project WHERE terrain_id = $1) OR terrain_id = $1)
-          AND name = 'Capacidad de red'
-        ORDER BY CASE WHEN value IS NOT NULL THEN 0 ELSE 1 END, id DESC
-        LIMIT 1
-      `, [row.terrain_id]);
-      demanda = demandaRows.length === 0
-        ? null
-        : demandaRows[0].value != null
-          ? { value: parseFloat(demandaRows[0].value) }
-          : { value: null, pending: true };
+      if (fieldMap['Cambio en la cobertura vegetal'] && COBERTURA_MAP[fieldMap['Cambio en la cobertura vegetal']] != null)
+        cobertura = { score: COBERTURA_MAP[fieldMap['Cambio en la cobertura vegetal']], label: fieldMap['Cambio en la cobertura vegetal'] };
+      else if (pendingFields.has('Cambio en la cobertura vegetal'))
+        cobertura = { pending: true };
 
-      const arboles = fieldMap['Número de árboles'];
-      if (arboles != null) {
-        if (parseFloat(arboles) === 0) {
+      // Forestal: 0 árboles → Exonerado (1), con árboles → score según CAR
+      // Capacidad SE — desde Google Sheets (Cantidad de minigranjas)
+      try {
+        const sheetRows = await fetchCapacidadSheet();
+        // Busca la última fila que coincide con el terreno y tiene Cantidad de minigranjas válida
+        const matches = sheetRows.filter(r => {
+          const t = (r['Terreno'] || '').trim();
+          return t.toUpperCase() === code || t.includes(`/lands/${row.terrain_id}/`);
+        });
+        for (let i = matches.length - 1; i >= 0; i--) {
+          const qty = parseInt(matches[i]['Cantidad de minigranjas'], 10);
+          if (!isNaN(qty)) { demanda = { value: qty }; break; }
+        }
+      } catch (_) {
+        // Google Sheets no disponible — continúa sin este dato
+      }
+
+      const licForestal = fieldMap['Licencia de aprovechamiento forestal'];
+      if (licForestal != null) {
+        if (licForestal === 'Exonerado') {
           forestal = { score: '1', label: 'Exonerado' };
         } else {
           const carVal = (fieldMap['CAR'] || '').trim();
@@ -233,25 +329,46 @@ module.exports = async (req, res) => {
           const carLabel = carVal || 'Otras corporaciones';
           forestal = { score: carScore, label: carLabel };
         }
-      } else if (pendingFields.has('Número de árboles')) {
+      } else if (pendingFields.has('Licencia de aprovechamiento forestal')) {
         forestal = { pending: true };
+      }
+
+      // Coexistencias: ANH y ANM
+      // Los valores pueden ser textos largos que comienzan con "se registra" o "no se registra"
+      const normCoex = v => (v || '').toLowerCase().trim();
+      const anh = normCoex(fieldMap['ANH']);
+      const anm = normCoex(fieldMap['ANM']);
+      if (anh.startsWith('se registra') || anm.startsWith('se registra')) {
+        coexistencias = { score: '0', label: 'Tiene' };
+      } else if (anh.startsWith('no se registra') || anm.startsWith('no se registra')) {
+        coexistencias = { score: '1', label: 'No tiene' };
+      } else if (pendingFields.has('ANH') || pendingFields.has('ANM')) {
+        coexistencias = { pending: true };
       }
     }
 
-    // Tensión y coexistencias desde requestsdb
-    let tension = null, coexistencias = null;
+    // Cluster: proyectos vivos del terreno (excluye dead, paused, uci)
+    let cluster = null;
+    if (row.terrain_id) {
+      const { rows: clusterRows } = await main.query(`
+        SELECT COUNT(*) as total
+        FROM minifarm_project
+        WHERE terrain_id = $1
+          AND stage NOT IN ('dead', 'paused', 'uci')
+      `, [row.terrain_id]);
+      const n = parseInt(clusterRows[0].total);
+      if      (n > 2)  cluster = { score: '1',   label: `${n} proyectos` };
+      else if (n === 2) cluster = { score: '0.7', label: '2 proyectos' };
+      else if (n === 1) cluster = { score: '0',   label: '1 proyecto' };
+    }
+
+    // Tensión desde requestsdb
+    let tension = null;
     if (row.terrain_id && process.env.DB2_NAME) {
       const reqs = makeClient(process.env.DB2_NAME);
       try {
         await reqs.connect();
 
-        // Todos los project_ids del terreno para buscar en requestsdb
-        const { rows: allProjects } = await main.query(
-          `SELECT id FROM minifarm_project WHERE terrain_id = $1`, [row.terrain_id]
-        );
-        const projectIds = allProjects.map(p => String(p.id));
-
-        // Tensión
         if (row.project_id) {
           const { rows: tRows } = await reqs.query(`
             SELECT tension_level FROM supplies_supplyrequest
@@ -259,18 +376,7 @@ module.exports = async (req, res) => {
             ORDER BY id DESC LIMIT 1
           `, [row.project_id]);
           if (tRows.length > 0) tension = mapTension(tRows[0].tension_level);
-        }
 
-        // Coexistencias
-        if (projectIds.length) {
-          const { rows: cRows } = await reqs.query(`
-            SELECT id FROM entities_coexistence
-            WHERE project_id = ANY($1)
-            LIMIT 1
-          `, [projectIds]);
-          coexistencias = cRows.length === 0
-            ? { score: '1', label: 'No tiene' }
-            : { has: true }; // tiene coexistencias — usuario elige buena/mala empresa
         }
 
       } catch (_) {
@@ -296,6 +402,8 @@ module.exports = async (req, res) => {
       estructura,
       forestal,
       demanda,
+      cobertura,
+      cluster,
     });
 
   } catch (err) {

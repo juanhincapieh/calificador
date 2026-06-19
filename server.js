@@ -1,53 +1,52 @@
-// Local dev server — sirve index.html + /api/terrain
-require('dotenv').config({ path: '.env.local' });
-
-const http = require('http');
-const fs   = require('fs');
-const path = require('path');
-const url  = require('url');
+﻿const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env.local") });
+const http = require("http");
+const fs   = require("fs");
+const url  = require("url");
 
 const PORT = 3000;
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
 
 const server = http.createServer(async (req, res) => {
-  const parsed = url.parse(req.url, true);
+  const parsed   = url.parse(req.url, true);
+  const pathname = parsed.pathname;
 
-  // ── API route ──
-  if (parsed.pathname === '/api/terrain') {
-    // Simulate Vercel's req/res interface
+  if (pathname === "/api/terrain") {
     req.query = parsed.query;
-    const apiHandler = require('./api/terrain');
-    // Wrap res with minimal Vercel-compatible helpers
-    res.status = (code) => { res.statusCode = code; return res; };
-    res.json   = (data) => {
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(data));
+    const handler = require(path.join(__dirname, "api/terrain.js"));
+    let statusCode = 200;
+    const resHeaders = {};
+
+    const mockRes = {
+      status(code)      { statusCode = code; return this; },
+      setHeader(k, v)   { resHeaders[k] = v; },
+      json(data) {
+        res.writeHead(statusCode, { ...resHeaders, "Content-Type": "application/json" });
+        res.end(JSON.stringify(data));
+      },
+      end() { res.writeHead(statusCode, resHeaders); res.end(); },
     };
-    res.end = res.end.bind(res);
+
     try {
-      await apiHandler(req, res);
-    } catch (e) {
-      res.statusCode = 500;
-      res.end(JSON.stringify({ error: e.message }));
+      await handler(req, mockRes);
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
     }
     return;
   }
 
-  // ── Static: index.html ──
-  if (parsed.pathname === '/' || parsed.pathname === '/index.html') {
-    const filePath = path.join(__dirname, 'index.html');
-    fs.readFile(filePath, (err, data) => {
-      if (err) { res.statusCode = 404; res.end('Not found'); return; }
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.end(data);
-    });
-    return;
-  }
+  const filePath = pathname === "/" ? "/index.html" : pathname;
+  const fullPath = path.join(__dirname, filePath);
 
-  res.statusCode = 404;
-  res.end('Not found');
+  fs.readFile(fullPath, (err, data) => {
+    if (err) { res.writeHead(404); res.end("Not found"); return; }
+    const ext = path.extname(fullPath);
+    res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+    res.end(data);
+  });
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  Calificador de Terrenos corriendo en:`);
-  console.log(`  http://localhost:${PORT}\n`);
+  console.log("\nServidor corriendo en http://localhost:" + PORT + "\n");
 });
