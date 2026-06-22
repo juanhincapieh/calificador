@@ -184,7 +184,8 @@ module.exports = async (req, res) => {
         p.road_distance    AS distancia_via,
         p.network_distance AS distancia_red,
         p.grid_operator_id AS operador_raw,
-        ci.name            AS municipio
+        p.name             AS project_name,
+        ci.name            AS city_name
       FROM termsheet_terrain t
       LEFT JOIN minifarm_project p   ON p.terrain_id = t.id
       LEFT JOIN territorial_city ci  ON ci.id = t.city_id
@@ -199,6 +200,19 @@ module.exports = async (req, res) => {
 
     const row = rows[0];
     const orKey = (row.operador_raw || '').toLowerCase().trim();
+
+    // Extraer ubicación del nombre del proyecto: "COLBOYT336P4_COMBITA_SUR" → "Combita Sur"
+    const toTitleCase = s => s.replace(/[_-]/g, ' ')
+      .split(' ').filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    let municipio = null;
+    if (row.project_name) {
+      const idx = row.project_name.indexOf('_');
+      if (idx >= 0) municipio = toTitleCase(row.project_name.slice(idx + 1));
+    }
+    if (!municipio && row.city_name) municipio = row.city_name;
 
     // Campos civiles desde validation_field
     let adecuacion = null, inundacion = null, cauce = null, servidumbre = null, estructura = null, forestal = null, demanda = null, cobertura = null, coexistencias = null;
@@ -388,7 +402,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       codigo:                row.codigo,
-      municipio:             row.municipio             ?? null,
+      municipio,
       produccion_especifica: row.produccion_especifica ?? null,
       distancia_via:         row.distancia_via         ?? null,
       distancia_red:         row.distancia_red         ?? null,
