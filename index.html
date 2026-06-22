@@ -609,7 +609,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Riesgos de inundación</div>
-        <div class="card-weight">3.13%</div>
+        <div class="card-weight">2.85%</div>
       </div>
       <select id="val-inundacion" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -632,7 +632,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Ocupación de cauce</div>
-        <div class="card-weight">2.25%</div>
+        <div class="card-weight">2.05%</div>
       </div>
       <select id="val-cauce" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -653,7 +653,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Cambio en la cobertura vegetal</div>
-        <div class="card-weight">4.01%</div>
+        <div class="card-weight">3.65%</div>
       </div>
       <select id="val-solicitud" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -677,7 +677,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Aprovechamiento forestal</div>
-        <div class="card-weight">8.08%</div>
+        <div class="card-weight">7.36%</div>
       </div>
       <select id="val-forestal" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -701,7 +701,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Coexistencias</div>
-        <div class="card-weight">2.69%</div>
+        <div class="card-weight">2.45%</div>
       </div>
       <select id="val-coexistencias" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -728,7 +728,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Adecuación del terreno</div>
-        <div class="card-weight">4.55%</div>
+        <div class="card-weight">4.14%</div>
       </div>
       <select id="val-adecuacion" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -752,7 +752,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Servidumbre</div>
-        <div class="card-weight">6.64%</div>
+        <div class="card-weight">6.05%</div>
       </div>
       <select id="val-servidumbre" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -775,7 +775,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Tipo de estructura</div>
-        <div class="card-weight">5.68%</div>
+        <div class="card-weight">5.17%</div>
       </div>
       <select id="val-estructura" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -796,7 +796,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Propietario</div>
-        <div class="card-weight">4.26%</div>
+        <div class="card-weight">3.88%</div>
       </div>
       <select id="val-propietario" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -855,7 +855,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Tensión de la red</div>
-        <div class="card-weight">1.72%</div>
+        <div class="card-weight">1.56%</div>
       </div>
       <select id="val-tension" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -878,7 +878,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Capacidad SE</div>
-        <div class="card-weight">3.01%</div>
+        <div class="card-weight">3.65%</div>
       </div>
       <input type="number" id="val-demanda" placeholder="Minigranjas (0-5)" min="0" max="5" step="1" oninput="calc()">
       <div class="score-bar-wrap">
@@ -895,7 +895,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Cluster</div>
-        <div class="card-weight">5.80%</div>
+        <div class="card-weight">5.29%</div>
       </div>
       <select id="val-cluster" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -913,32 +913,27 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="weighted-result">Aporte ponderado: <span id="wr-cluster">—</span></div>
     </div>
 
-    <div class="card" id="card-offtaker">
+    <div class="card" id="card-zona-vecinos">
       <div class="card-accent"></div>
       <div class="card-top">
-        <div class="card-name">Offtaker</div>
-        <div class="card-weight">1.72%</div>
+        <div class="card-name">Zona Vecinos</div>
+        <div class="card-weight">10.43%</div>
       </div>
-      <select id="val-offtaker" onchange="calc()">
+      <select id="val-zona-vecinos" onchange="calc()">
         <option value="">— Seleccionar —</option>
-        <option value="1">EPM / ISA</option>
-        <option value="0.9">CELSIA / ENEL</option>
-        <option value="0.8">ESSA</option>
-        <option value="0.7">CENS / CHEC</option>
-        <option value="0.6">AFINIA / EBSA</option>
-        <option value="0.5">CEDENAR / EMSA</option>
-        <option value="0.4">DISPAC / EMCALI</option>
-        <option value="0.3">AIRE</option>
-        <option value="0.2">Otro</option>
+        <option value="1">ENEL / EPC / EMCALI</option>
+        <option value="0.8">AIRE / AFINIA / ESSA / CENS</option>
+        <option value="0.6">ATENEA / CELSIA / EMSA / CHEC / EBSA</option>
+        <option value="0.5">Otros</option>
       </select>
       <div class="score-bar-wrap">
         <div class="score-bar-header">
           <span class="score-bar-label">Score</span>
-          <span class="score-val" id="sv-offtaker">—</span>
+          <span class="score-val" id="sv-zona-vecinos">—</span>
         </div>
-        <div class="bar-bg"><div class="bar-fill" id="bar-offtaker"></div></div>
+        <div class="bar-bg"><div class="bar-fill" id="bar-zona-vecinos"></div></div>
       </div>
-      <div class="weighted-result">Aporte ponderado: <span id="wr-offtaker">—</span></div>
+      <div class="weighted-result">Aporte ponderado: <span id="wr-zona-vecinos">—</span></div>
     </div>
 
   </div>
@@ -1102,7 +1097,7 @@ async function fetchFromDB(codigo) {
       data.distancia_via         != null ? '🛣 Vía'           : '',
       data.distancia_red         != null ? '⚡ Red'            : '',
       data.operador              != null ? '🏭 OR'             : '',
-      data.offtaker              != null ? '🤝 Offtaker'      : '',
+      data.zona_vecinos          != null ? '📍 Zona Vecinos'  : '',
       data.tension               != null ? '🔌 Tensión'       : '',
       data.coexistencias         != null ? '🏗 Coexistencias' : '',
       data.adecuacion            != null ? '🏔 Adecuación'    : '',
@@ -1192,8 +1187,8 @@ function applyAutofill(data) {
     if (card) card.classList.add('autofilled');
   };
 
-  applySelect('or',       data.operador);
-  applySelect('offtaker', data.offtaker);
+  applySelect('or',           data.operador);
+  applySelect('zona-vecinos', data.zona_vecinos);
   applySelect('tension',  data.tension);
   applySelect('coexistencias', data.coexistencias);
   applySelect('adecuacion',   data.adecuacion);
@@ -1283,56 +1278,56 @@ const CRITERIA = [
     type: 'select', unit: ''
   },
   {
-    id: 'propietario', name: 'Propietario', weight: 0.0426,
+    id: 'propietario', name: 'Propietario', weight: 0.0388,
     type: 'select', unit: ''
   },
   {
-    id: 'estructura', name: 'Tipo de estructura', weight: 0.0568,
+    id: 'estructura', name: 'Tipo de estructura', weight: 0.0517,
     type: 'select', unit: ''
   },
   {
-    id: 'adecuacion', name: 'Adecuación del terreno', weight: 0.0455,
+    id: 'adecuacion', name: 'Adecuación del terreno', weight: 0.0414,
     type: 'select', unit: ''
   },
   {
-    id: 'inundacion', name: 'Riesgos de inundación', weight: 0.0313,
+    id: 'inundacion', name: 'Riesgos de inundación', weight: 0.0285,
     type: 'select', unit: ''
   },
   {
-    id: 'cauce', name: 'Ocupación de cauce', weight: 0.0225,
+    id: 'cauce', name: 'Ocupación de cauce', weight: 0.0205,
     type: 'select', unit: ''
   },
   {
-    id: 'servidumbre', name: 'Servidumbre', weight: 0.0664,
+    id: 'servidumbre', name: 'Servidumbre', weight: 0.0605,
     type: 'select', unit: ''
   },
   {
-    id: 'forestal', name: 'Aprovechamiento forestal', weight: 0.0808,
+    id: 'forestal', name: 'Aprovechamiento forestal', weight: 0.0736,
     type: 'select', unit: ''
   },
   {
-    id: 'coexistencias', name: 'Coexistencias', weight: 0.0269,
+    id: 'coexistencias', name: 'Coexistencias', weight: 0.0245,
     type: 'select', unit: ''
   },
   {
-    id: 'solicitud', name: 'Cambio en la cobertura vegetal', weight: 0.0401,
+    id: 'solicitud', name: 'Cambio en la cobertura vegetal', weight: 0.0365,
     type: 'select', unit: ''
   },
   {
-    id: 'demanda', name: 'Capacidad SE', weight: 0.0301,
+    id: 'demanda', name: 'Capacidad SE', weight: 0.0365,
     type: 'linear', min: 0, minScore: 0, max: 5, maxScore: 1,
     unit: 'Mgs'
   },
   {
-    id: 'tension', name: 'Tensión de la red', weight: 0.0172,
+    id: 'tension', name: 'Tensión de la red', weight: 0.0156,
     type: 'select', unit: ''
   },
   {
-    id: 'cluster', name: 'Cluster', weight: 0.0580,
+    id: 'cluster', name: 'Cluster', weight: 0.0529,
     type: 'select', unit: ''
   },
   {
-    id: 'offtaker', name: 'Offtaker', weight: 0.0172,
+    id: 'zona-vecinos', name: 'Zona Vecinos', weight: 0.1043,
     type: 'select', unit: ''
   },
 ];

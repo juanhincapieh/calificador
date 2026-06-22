@@ -43,21 +43,19 @@ const CAUCE_MAP = {
   'Requiere':    '0',
 };
 
-const OFFTAKER_MAP = {
-  epm:          { score: '1',   label: 'EPM / ISA' },
-  isa:          { score: '1',   label: 'EPM / ISA' },
-  enel:         { score: '0.9', label: 'CELSIA / ENEL' },
-  celsia:       { score: '0.9', label: 'CELSIA / ENEL' },
-  essa:         { score: '0.8', label: 'ESSA' },
-  cens:         { score: '0.7', label: 'CENS / CHEC' },
-  chec:         { score: '0.7', label: 'CENS / CHEC' },
-  afinia:       { score: '0.6', label: 'AFINIA / EBSA' },
-  ebsa:         { score: '0.6', label: 'AFINIA / EBSA' },
-  cedenar:      { score: '0.5', label: 'CEDENAR / EMSA' },
-  emsa:         { score: '0.5', label: 'CEDENAR / EMSA' },
-  emcali:       { score: '0.4', label: 'DISPAC / EMCALI' },
-  dispac:       { score: '0.4', label: 'DISPAC / EMCALI' },
-  aire:         { score: '0.3', label: 'AIRE' },
+const ZONA_VECINOS_MAP = {
+  enel:   { score: '1',   label: 'ENEL' },
+  epc:    { score: '1',   label: 'EPC' },
+  emcali: { score: '1',   label: 'EMCALI' },
+  aire:   { score: '0.8', label: 'AIRE' },
+  afinia: { score: '0.8', label: 'AFINIA' },
+  essa:   { score: '0.8', label: 'ESSA' },
+  cens:   { score: '0.8', label: 'CENS' },
+  atenea: { score: '0.6', label: 'ATENEA' },
+  celsia: { score: '0.6', label: 'CELSIA' },
+  emsa:   { score: '0.6', label: 'EMSA' },
+  chec:   { score: '0.6', label: 'CHEC' },
+  ebsa:   { score: '0.6', label: 'EBSA' },
 };
 
 const SERVIDUMBRE_MAP = {
@@ -391,8 +389,8 @@ module.exports = async (req, res) => {
       produccion_especifica: row.produccion_especifica ?? null,
       distancia_via:         row.distancia_via         ?? null,
       distancia_red:         row.distancia_red         ?? null,
-      operador:   orKey ? (OR_MAP[orKey]      || { score: '0.1', label: orKey.toUpperCase() }) : null,
-      offtaker:   orKey ? (OFFTAKER_MAP[orKey] || { score: '0.2', label: 'Otro' })            : null,
+      operador:     orKey ? (OR_MAP[orKey]           || { score: '0.1', label: orKey.toUpperCase() }) : null,
+      zona_vecinos: orKey ? (ZONA_VECINOS_MAP[orKey] || { score: '0.5', label: orKey.toUpperCase() }) : null,
       tension,
       adecuacion,
       inundacion,
