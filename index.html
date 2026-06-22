@@ -1541,25 +1541,31 @@ function limpiarFormulario() {
   document.getElementById('codigo-terreno').value = '';
   currentZona = null;
   updateZonaBanner('');
-  clearAutofill();
-  MANUAL_FIELDS.forEach(id => {
-    const el = document.getElementById('val-' + id);
-    if (el) el.value = '';
+
+  // Vaciar y re-habilitar TODOS los campos para empezar desde cero
+  CRITERIA.forEach(c => {
+    const el = document.getElementById('val-' + c.id);
+    if (el) { el.value = ''; el.disabled = false; }
+    const card = document.getElementById('card-' + c.id);
+    if (card) card.classList.remove('autofilled');
   });
+
+  AUTOFILLED_IDS.clear();
+  document.querySelectorAll('.pending-badge').forEach(el => el.remove());
+  setDbStatus('idle', '');
   calc();
 }
 
 // ─────────────────────────────────────────────
-// DESCARGA PDF
+// DESCARGA PDF — Unergy brand
 // ─────────────────────────────────────────────
 function descargarPDF() {
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { alert('Error cargando jsPDF. Verifica tu conexión a internet.'); return; }
 
-  // Recopilar datos actuales
-  const codigo   = document.getElementById('codigo-terreno').value.toUpperCase().trim() || 'SIN CÓDIGO';
-  const zona     = currentZona ? currentZona.nombre : 'No detectada';
-  const zoneMax  = currentZona ? currentZona.max : 4.9;
+  const codigo  = document.getElementById('codigo-terreno').value.toUpperCase().trim() || 'SIN CÓDIGO';
+  const zona    = currentZona ? currentZona.nombre : 'No detectada';
+  const zoneMax = currentZona ? currentZona.max : 4.9;
 
   const rows = [];
   let total = 0;
@@ -1573,97 +1579,163 @@ function descargarPDF() {
   });
 
   const pct = (total * 100).toFixed(2);
-  let tierText, tierRGB;
-  if (total > 0.80)       { tierText = 'TIER 1 — Prioritario';     tierRGB = [22, 163, 74];   }
-  else if (total >= 0.65) { tierText = 'TIER 2 — Buen potencial';  tierRGB = [37, 99, 235];   }
-  else if (total >= 0.55) { tierText = 'TIER 3 — Aceptable';       tierRGB = [202, 138, 4];   }
-  else                    { tierText = 'TIER 4 — No recomendado';   tierRGB = [220, 38, 38];   }
+
+  // Paleta Unergy
+  const C = {
+    purpleDeep:  [44,  32,  57],
+    purple:      [145, 91,  216],
+    yellow:      [246, 255, 114],
+    purpleSoft:  [211, 174, 255],
+    lightPurple: [248, 243, 255],
+    muted:       [138, 122, 158],
+    white:       [255, 255, 255],
+    green:       [22,  163, 74],
+    amber:       [217, 119, 6],
+    orange:      [234, 88,  12],
+    red:         [220, 38,  38],
+  };
+
+  // Tier config (igual a la web)
+  let tierLabel, tierSubtitle, tierBg, tierFg;
+  if      (total > 0.80)  { tierLabel = 'TIER 1'; tierSubtitle = 'Prioritario';    tierBg = C.yellow;      tierFg = C.purpleDeep; }
+  else if (total >= 0.65) { tierLabel = 'TIER 2'; tierSubtitle = 'Buen potencial'; tierBg = C.purple;      tierFg = C.white;      }
+  else if (total >= 0.55) { tierLabel = 'TIER 3'; tierSubtitle = 'Aceptable';      tierBg = C.purpleSoft;  tierFg = C.purpleDeep; }
+  else                    { tierLabel = 'TIER 4'; tierSubtitle = 'No recomendado'; tierBg = C.red;         tierFg = C.white;      }
 
   const doc = new jsPDF();
   const W = 210;
 
-  // ── Encabezado ──
-  doc.setFillColor(15, 31, 61);
-  doc.rect(0, 0, W, 42, 'F');
-  doc.setFillColor(27, 58, 110);
-  doc.rect(0, 36, W, 6, 'F');
+  // ── ENCABEZADO ──────────────────────────────
+  doc.setFillColor(...C.purpleDeep);
+  doc.rect(0, 0, W, 50, 'F');
+  // Franja amarilla inferior del header
+  doc.setFillColor(...C.yellow);
+  doc.rect(0, 46, W, 4, 'F');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20); doc.setFont(undefined, 'bold');
-  doc.text('EVALUACIÓN DE TERRENO', W / 2, 14, { align: 'center' });
-  doc.setFontSize(11); doc.setFont(undefined, 'normal');
-  doc.text('Fábrica de Minigranjas — Matriz de Tiers', W / 2, 23, { align: 'center' });
-  doc.setFontSize(10);
-  doc.text(`Código: ${codigo}   ·   Zona: ${zona}   ·   Generado: ${new Date().toLocaleDateString('es-CO')}`, W / 2, 32, { align: 'center' });
-
-  // ── Resultado principal ──
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(13); doc.setFont(undefined, 'bold');
-  doc.text('RESULTADO FINAL', 20, 56);
-
-  doc.setDrawColor(...tierRGB); doc.setLineWidth(1.5);
-  doc.roundedRect(20, 61, W - 40, 32, 3, 3);
-
-  doc.setTextColor(...tierRGB);
-  doc.setFontSize(30); doc.setFont(undefined, 'bold');
-  doc.text(`${pct}%`, W / 2, 76, { align: 'center' });
-  doc.setFontSize(14);
-  doc.text(tierText, W / 2, 86, { align: 'center' });
-
-  // Info zona
-  doc.setTextColor(80, 80, 80);
+  // Logotipo texto
+  doc.setTextColor(...C.yellow);
+  doc.setFontSize(11); doc.setFont(undefined, 'bold');
+  doc.text('UNERGY', 20, 13);
+  doc.setTextColor(...C.purpleSoft);
   doc.setFontSize(9); doc.setFont(undefined, 'normal');
-  doc.text(`Departamento: ${zona}   ·   Máx. producción específica: ${zoneMax} kWh/kWp/día`, W / 2, 99, { align: 'center' });
+  doc.text('· Fábrica de Minigranjas', 42, 13);
 
-  // ── Tabla de desglose ──
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(12); doc.setFont(undefined, 'bold');
-  doc.text('DESGLOSE POR CRITERIO', 20, 112);
+  // Título principal
+  doc.setTextColor(...C.white);
+  doc.setFontSize(21); doc.setFont(undefined, 'bold');
+  doc.text('Calificador de Terrenos', 20, 28);
+
+  // Metadata
+  doc.setTextColor(...C.purpleSoft);
+  doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
+  doc.text(
+    `Código: ${codigo}   ·   Zona: ${zona}   ·   Generado: ${new Date().toLocaleDateString('es-CO')}`,
+    20, 39
+  );
+
+  // ── RESULTADO PRINCIPAL ──────────────────────
+  doc.setTextColor(...C.purpleDeep);
+  doc.setFontSize(8); doc.setFont(undefined, 'bold');
+  doc.text('RESULTADO FINAL', 20, 62);
+
+  // Caja de tier (fondo sólido)
+  doc.setFillColor(...tierBg);
+  doc.roundedRect(20, 66, W - 40, 38, 5, 5, 'F');
+  // Borde sutil
+  doc.setDrawColor(...C.purple);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(20, 66, W - 40, 38, 5, 5, 'S');
+
+  // Puntaje
+  doc.setTextColor(...tierFg);
+  doc.setFontSize(34); doc.setFont(undefined, 'bold');
+  doc.text(`${pct}%`, W / 2, 85, { align: 'center' });
+
+  // Etiqueta tier
+  doc.setFontSize(13); doc.setFont(undefined, 'bold');
+  doc.text(`${tierLabel} — ${tierSubtitle}`, W / 2, 96, { align: 'center' });
+
+  // Zona info
+  doc.setTextColor(...C.muted);
+  doc.setFontSize(7.5); doc.setFont(undefined, 'normal');
+  doc.text(
+    `Departamento: ${zona}   ·   Producción específica máxima: ${zoneMax} kWh/kWp/día`,
+    W / 2, 109, { align: 'center' }
+  );
+
+  // ── TABLA DE DESGLOSE ───────────────────────
+  doc.setTextColor(...C.purpleDeep);
+  doc.setFontSize(8); doc.setFont(undefined, 'bold');
+  doc.text('DESGLOSE POR CRITERIO', 20, 120);
 
   const tableData = rows.map(r => [
     r.name,
     r.value === '—' ? 'Sin dato' : String(r.value),
     r.score !== null ? r.score.toFixed(4) : '—',
     (r.weight * 100).toFixed(2) + '%',
-    r.weighted !== null ? (r.weighted * 100).toFixed(2) + '%' : '—'
+    r.weighted !== null ? (r.weighted * 100).toFixed(2) + '%' : '—',
   ]);
 
   doc.autoTable({
-    startY: 116,
+    startY: 124,
     head: [['Criterio', 'Valor ingresado', 'Score', 'Peso', 'Aporte']],
     body: tableData,
     foot: [['', '', '', 'TOTAL', `${pct}%`]],
-    theme: 'striped',
-    headStyles:  { fillColor: [15, 31, 61], textColor: [255,255,255], fontStyle: 'bold', fontSize: 9 },
-    footStyles:  { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold', fontSize: 10 },
-    bodyStyles:  { fontSize: 8.5 },
+    theme: 'grid',
+    headStyles: {
+      fillColor: C.purpleDeep,
+      textColor: C.white,
+      fontStyle: 'bold',
+      fontSize: 8.5,
+    },
+    alternateRowStyles: { fillColor: C.lightPurple },
+    bodyStyles: { fontSize: 8, textColor: C.purpleDeep },
+    footStyles: {
+      fillColor: tierBg,
+      textColor: tierFg,
+      fontStyle: 'bold',
+      fontSize: 10,
+    },
     columnStyles: {
-      0: { cellWidth: 68 },
-      1: { cellWidth: 52 },
+      0: { cellWidth: 65 },
+      1: { cellWidth: 50 },
       2: { cellWidth: 22, halign: 'center' },
       3: { cellWidth: 20, halign: 'center' },
-      4: { cellWidth: 22, halign: 'center' }
+      4: { cellWidth: 22, halign: 'center' },
     },
     margin: { left: 20, right: 20 },
     didParseCell: function(data) {
-      // Colorear la fila del total en el footer
-      if (data.section === 'foot') {
-        data.cell.styles.fillColor = tierRGB;
-        data.cell.styles.textColor = [255,255,255];
+      if (data.section === 'body' && data.column.index === 2) {
+        const v = parseFloat(data.cell.text[0]);
+        if (!isNaN(v)) {
+          data.cell.styles.fontStyle = 'bold';
+          if      (v >= 0.7) data.cell.styles.textColor = C.green;
+          else if (v >= 0.5) data.cell.styles.textColor = C.amber;
+          else if (v >= 0.3) data.cell.styles.textColor = C.orange;
+          else               data.cell.styles.textColor = C.red;
+        }
       }
-    }
+      if (data.section === 'body' && data.column.index === 4) {
+        if (data.cell.text[0] !== '—') data.cell.styles.fontStyle = 'bold';
+      }
+    },
   });
 
-  // ── Pie de página ──
+  // ── PIE DE PÁGINA ───────────────────────────
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFontSize(8); doc.setTextColor(160, 160, 160);
-    doc.text(`Página ${i} de ${pageCount}  ·  Calificador de Terrenos — Minigranjas`, W / 2, 289, { align: 'center' });
+    doc.setFillColor(...C.purpleDeep);
+    doc.rect(0, 286, W, 11, 'F');
+    doc.setFontSize(7); doc.setTextColor(...C.purpleSoft);
+    doc.setFont(undefined, 'normal');
+    doc.text(
+      `Página ${i} de ${pageCount}   ·   Calificador de Terrenos — Unergy`,
+      W / 2, 293, { align: 'center' }
+    );
   }
 
-  const filename = `Evaluacion_${codigo}_${new Date().toISOString().slice(0,10)}.pdf`;
-  doc.save(filename);
+  doc.save(`Evaluacion_${codigo}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 </script>
 </body>
