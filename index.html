@@ -539,7 +539,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Distancia a la vía</div>
-        <div class="card-weight">5.73%</div>
+        <div class="card-weight">5.22%</div>
       </div>
       <input type="number" id="val-via" placeholder="metros (ej: 80)" min="0" oninput="calc()">
       <div class="score-bar-wrap">
@@ -555,8 +555,8 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
     <div class="card" id="card-red">
       <div class="card-accent"></div>
       <div class="card-top">
-        <div class="card-name">Distancia a la red</div>
-        <div class="card-weight">5.64%</div>
+        <div class="card-name">Longitud de la línea</div>
+        <div class="card-weight">5.14%</div>
       </div>
       <input type="number" id="val-red" placeholder="metros (ej: 100)" min="0" oninput="calc()">
       <div class="score-bar-wrap">
@@ -573,7 +573,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Producción específica</div>
-        <div class="card-weight">24.42%</div>
+        <div class="card-weight">21.35%</div>
       </div>
       <input type="number" id="val-prod" placeholder="kWh/kWp/día (ej: 4.5)" step="0.01" oninput="calc()">
       <div class="score-bar-wrap">
@@ -596,7 +596,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Amenazas</div>
-        <div class="card-weight">5.34%</div>
+        <div class="card-weight">4.87%</div>
       </div>
       <select id="val-amenazas" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -835,7 +835,7 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
       <div class="card-accent"></div>
       <div class="card-top">
         <div class="card-name">Operador de Red (OR)</div>
-        <div class="card-weight">5.34%</div>
+        <div class="card-weight">4.87%</div>
       </div>
       <select id="val-or" onchange="calc()">
         <option value="">— Seleccionar —</option>
@@ -1268,26 +1268,26 @@ function updateZonaBanner(codigo) {
 // ─────────────────────────────────────────────
 const CRITERIA = [
   {
-    id: 'via', name: 'Distancia a la vía (m)', weight: 0.0573,
+    id: 'via', name: 'Distancia a la vía (m)', weight: 0.0522,
     type: 'linear', min: 30, minScore: 1, max: 300, maxScore: 0,
     unit: 'm'
   },
   {
-    id: 'prod', name: 'Producción específica (kWh/kWp/día)', weight: 0.2442,
+    id: 'prod', name: 'Producción específica (kWh/kWp/día)', weight: 0.2135,
     type: 'linear', min: 4, minScore: 0, max: 4.9, maxScore: 1,
     unit: 'kWh/kWp/día'
   },
   {
-    id: 'red', name: 'Distancia a la red (m)', weight: 0.0564,
+    id: 'red', name: 'Longitud de la línea (m)', weight: 0.0514,
     type: 'linear', min: 10, minScore: 1, max: 400, maxScore: 0,
     unit: 'm'
   },
   {
-    id: 'amenazas', name: 'Amenazas', weight: 0.0534,
+    id: 'amenazas', name: 'Amenazas', weight: 0.0487,
     type: 'select', unit: ''
   },
   {
-    id: 'or', name: 'Operador de Red (OR)', weight: 0.0534,
+    id: 'or', name: 'Operador de Red (OR)', weight: 0.0487,
     type: 'select', unit: ''
   },
   {
