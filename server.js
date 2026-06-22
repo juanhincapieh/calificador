@@ -4,7 +4,7 @@ const http = require("http");
 const fs   = require("fs");
 const url  = require("url");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
 
 const server = http.createServer(async (req, res) => {
