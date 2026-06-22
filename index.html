@@ -513,6 +513,15 @@ tbody td { padding: 10px 16px; font-size: 13px; color: var(--text); }
     </svg>
     Consultar
   </button>
+  <button class="btn-consultar" id="btn-limpiar" onclick="limpiarFormulario()" title="Limpiar todos los campos"
+    style="background:transparent;color:var(--purple);border:1.5px solid var(--purple-soft);"
+    onmouseover="this.style.background='var(--purple)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--purple)'">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M1 4v6h6M23 20v-6h-6"/>
+      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+    </svg>
+    Limpiar
+  </button>
   <div class="zona-banner zona-empty" id="zona-banner">
     <span>Ingresa el código del terreno para detectar la zona</span>
   </div>
@@ -1011,7 +1020,8 @@ const ZONAS = {
   'VAL': { nombre: 'Valle',         max: 4.5 },
 };
 
-let currentZona = null; // { nombre, max } | null
+let currentZona      = null; // { nombre, max } | null
+let currentMunicipio = null; // string | null
 
 // Campos que el usuario puede llenar manualmente — todos los demás son solo-BD
 const MANUAL_FIELDS = new Set(['amenazas', 'propietario']);
@@ -1121,6 +1131,7 @@ async function fetchFromDB(codigo) {
 
 function applyAutofill(data) {
   clearAutofill();
+  currentMunicipio = data.municipio || null;
 
   const fill = (id, value) => {
     const el = document.getElementById('val-' + id);
@@ -1236,9 +1247,11 @@ function updateZonaBanner(codigo) {
   if (!banner) return;
   if (currentZona) {
     banner.className = 'zona-banner zona-found';
+    const munPart = currentMunicipio ? `<span class="zona-sep">·</span><span style="font-weight:700;color:var(--purple-deep)">${currentMunicipio}</span>` : '';
     banner.innerHTML = `
       <span>📍</span>
       <span class="zona-nombre">${currentZona.nombre}</span>
+      ${munPart}
       <span class="zona-sep">·</span>
       <span class="zona-max">Máx. producción: <strong>${currentZona.max} kWh/kWp/día</strong></span>`;
   } else if (codigo && codigo.length >= 3) {
@@ -1539,7 +1552,8 @@ calc();
 // ─────────────────────────────────────────────
 function limpiarFormulario() {
   document.getElementById('codigo-terreno').value = '';
-  currentZona = null;
+  currentZona      = null;
+  currentMunicipio = null;
   updateZonaBanner('');
 
   // Vaciar y re-habilitar TODOS los campos para empezar desde cero
@@ -1563,9 +1577,10 @@ function descargarPDF() {
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { alert('Error cargando jsPDF. Verifica tu conexión a internet.'); return; }
 
-  const codigo  = document.getElementById('codigo-terreno').value.toUpperCase().trim() || 'SIN CÓDIGO';
-  const zona    = currentZona ? currentZona.nombre : 'No detectada';
-  const zoneMax = currentZona ? currentZona.max : 4.9;
+  const codigo     = document.getElementById('codigo-terreno').value.toUpperCase().trim() || 'SIN CÓDIGO';
+  const zona       = currentZona ? currentZona.nombre : 'No detectada';
+  const zoneMax    = currentZona ? currentZona.max : 4.9;
+  const municipio  = currentMunicipio || null;
 
   const rows = [];
   let total = 0;
@@ -1628,10 +1643,10 @@ function descargarPDF() {
   // Metadata
   doc.setTextColor(...C.purpleSoft);
   doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
-  doc.text(
-    `Código: ${codigo}   ·   Zona: ${zona}   ·   Generado: ${new Date().toLocaleDateString('es-CO')}`,
-    20, 39
-  );
+  const metaParts = [`Código: ${codigo}`];
+  if (municipio) metaParts.push(`Municipio: ${municipio}`);
+  metaParts.push(`Zona: ${zona}`, `Generado: ${new Date().toLocaleDateString('es-CO')}`);
+  doc.text(metaParts.join('   ·   '), 20, 39);
 
   // ── RESULTADO PRINCIPAL ──────────────────────
   doc.setTextColor(...C.purpleDeep);
@@ -1658,10 +1673,12 @@ function descargarPDF() {
   // Zona info
   doc.setTextColor(...C.muted);
   doc.setFontSize(7.5); doc.setFont(undefined, 'normal');
-  doc.text(
-    `Departamento: ${zona}   ·   Producción específica máxima: ${zoneMax} kWh/kWp/día`,
-    W / 2, 109, { align: 'center' }
-  );
+  const zonaLine = [
+    municipio ? `Municipio: ${municipio}` : null,
+    `Departamento: ${zona}`,
+    `Máx. producción: ${zoneMax} kWh/kWp/día`,
+  ].filter(Boolean).join('   ·   ');
+  doc.text(zonaLine, W / 2, 109, { align: 'center' });
 
   // ── TABLA DE DESGLOSE ───────────────────────
   doc.setTextColor(...C.purpleDeep);

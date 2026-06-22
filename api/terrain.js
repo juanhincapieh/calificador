@@ -183,9 +183,11 @@ module.exports = async (req, res) => {
         p.id               AS project_id,
         p.road_distance    AS distancia_via,
         p.network_distance AS distancia_red,
-        p.grid_operator_id AS operador_raw
+        p.grid_operator_id AS operador_raw,
+        ci.name            AS municipio
       FROM termsheet_terrain t
-      LEFT JOIN minifarm_project p ON p.terrain_id = t.id
+      LEFT JOIN minifarm_project p   ON p.terrain_id = t.id
+      LEFT JOIN territorial_city ci  ON ci.id = t.city_id
       WHERE UPPER(t.name) = $1
       ORDER BY p.id DESC NULLS LAST
       LIMIT 1
@@ -386,6 +388,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       codigo:                row.codigo,
+      municipio:             row.municipio             ?? null,
       produccion_especifica: row.produccion_especifica ?? null,
       distancia_via:         row.distancia_via         ?? null,
       distancia_red:         row.distancia_red         ?? null,
